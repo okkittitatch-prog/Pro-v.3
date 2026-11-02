@@ -1,0 +1,193 @@
+-- StarterPlayerScripts -> AutoFarmGUI.lua (LocalScript)
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local Lighting = game:GetService("Lighting")
+
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+-- Variables State
+local isAutoFarmActive = false
+local autoFarmThread = nil
+local isLowGraphicsActive = false
+
+-- Backup for Graphics restore
+local originalGlobalShadows = Lighting.GlobalShadows
+local originalFogEnd = Lighting.FogEnd
+
+-- ==========================================
+-- 1. สร้าง UI เมนูภาษาไทย
+-- ==========================================
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "MahanakhonMenuGui"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = PlayerGui
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 240, 0, 270)
+MainFrame.Position = UDim2.new(0.05, 0, 0.3, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true -- สามารถลากเปลี่ยนตำแหน่งเมนูได้
+MainFrame.Parent = ScreenGui
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 10)
+UICorner.Parent = MainFrame
+
+-- Title Bar
+local TitleLabel = Instance.new("TextLabel")
+TitleLabel.Size = UDim2.new(1, 0, 0, 40)
+TitleLabel.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+TitleLabel.Text = "🇹🇭 มหานคร - เมนูช่วยเหลือ"
+TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+TitleLabel.TextSize = 16
+TitleLabel.Font = Enum.Font.SourceSansBold
+TitleLabel.Parent = MainFrame
+
+local TitleCorner = Instance.new("UICorner")
+TitleCorner.CornerRadius = UDim.new(0, 10)
+TitleCorner.Parent = TitleLabel
+
+-- ปุ่มที่ 1: ออโต้ฟาร์มเงิน
+local AutoFarmBtn = Instance.new("TextButton")
+AutoFarmBtn.Size = UDim2.new(0.85, 0, 0, 45)
+AutoFarmBtn.Position = UDim2.new(0.075, 0, 0.22, 0)
+AutoFarmBtn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+AutoFarmBtn.Text = "🚗 ออโต้ฟาร์ม: ปิด"
+AutoFarmBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+AutoFarmBtn.TextSize = 15
+AutoFarmBtn.Font = Enum.Font.SourceSansBold
+AutoFarmBtn.Parent = MainFrame
+
+local Btn1Corner = Instance.new("UICorner")
+Btn1Corner.CornerRadius = UDim.new(0, 8)
+Btn1Corner.Parent = AutoFarmBtn
+
+-- ปุ่มที่ 2: ลดกราฟิก (FPS Boost)
+local LowGraphicBtn = Instance.new("TextButton")
+LowGraphicBtn.Size = UDim2.new(0.85, 0, 0, 45)
+LowGraphicBtn.Position = UDim2.new(0.075, 0, 0.44, 0)
+LowGraphicBtn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+LowGraphicBtn.Text = "⚡ ลดกราฟิก (ลื่นขึ้น): ปิด"
+LowGraphicBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+LowGraphicBtn.TextSize = 15
+LowGraphicBtn.Font = Enum.Font.SourceSansBold
+LowGraphicBtn.Parent = MainFrame
+
+local Btn2Corner = Instance.new("UICorner")
+Btn2Corner.CornerRadius = UDim.new(0, 8)
+Btn2Corner.Parent = LowGraphicBtn
+
+-- ข้อความสถานะด้านล่าง
+local StatusLabel = Instance.new("TextLabel")
+StatusLabel.Size = UDim2.new(0.9, 0, 0, 60)
+StatusLabel.Position = UDim2.new(0.05, 0, 0.68, 0)
+StatusLabel.BackgroundTransparency = 1
+StatusLabel.Text = "สถานะ: พร้อมใช้งาน\n(ลากแถบเมนูเพื่อย้ายตำแหน่งได้)"
+StatusLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+StatusLabel.TextSize = 13
+StatusLabel.Font = Enum.Font.SourceSans
+StatusLabel.TextWrapped = true
+StatusLabel.Parent = MainFrame
+
+
+-- ==========================================
+-- 2. สคริปต์ระบบออโต้ฟาร์ม (Auto Farm)
+-- ==========================================
+local function startAutoFarm()
+	autoFarmThread = task.spawn(function()
+		while isAutoFarmActive do
+			task.wait(0.1)
+			
+			local character = LocalPlayer.Character
+			if character then
+				local humanoid = character:FindFirstChildOfClass("Humanoid")
+				if humanoid and humanoid.SeatPart and humanoid.SeatPart:IsA("VehicleSeat") then
+					local seat = humanoid.SeatPart
+					
+					-- จำลองการเร่งเครื่องยนต์ของรถ ให้วิ่งไปข้างหน้าเพื่อปั๊มความเร็ว/ระยะทาง
+					seat.ThrottleFloat = 1
+					seat.SteerFloat = 0
+				end
+			end
+		end
+	end)
+end
+
+local function stopAutoFarm()
+	if autoFarmThread then
+		task.cancel(autoFarmThread)
+		autoFarmThread = nil
+	end
+	
+	-- คืนค่าคันเร่งรถเมื่อปิดการทำงาน
+	local character = LocalPlayer.Character
+	if character then
+		local humanoid = character:FindFirstChildOfClass("Humanoid")
+		if humanoid and humanoid.SeatPart and humanoid.SeatPart:IsA("VehicleSeat") then
+			humanoid.SeatPart.ThrottleFloat = 0
+		end
+	end
+end
+
+AutoFarmBtn.MouseButton1Click:Connect(function()
+	isAutoFarmActive = not isAutoFarmActive
+	
+	if isAutoFarmActive then
+		AutoFarmBtn.Text = "🚗 ออโต้ฟาร์ม: เปิด"
+		AutoFarmBtn.BackgroundColor3 = Color3.fromRGB(40, 180, 40)
+		StatusLabel.Text = "สถานะ: กำลังขับรถอัตโนมัติ..."
+		startAutoFarm()
+	else
+		AutoFarmBtn.Text = "🚗 ออโต้ฟาร์ม: ปิด"
+		AutoFarmBtn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+		StatusLabel.Text = "สถานะ: หยุดออโต้ฟาร์มแล้ว"
+		stopAutoFarm()
+	end
+end)
+
+
+-- ==========================================
+-- 3. สคริปต์ระบบลดกราฟิก (FPS Booster)
+-- ==========================================
+local function toggleLowGraphics(enable)
+	if enable then
+		-- ปิด เงา และ หมอก
+		Lighting.GlobalShadows = false
+		Lighting.FogEnd = 9e9
+		
+		-- ลดรายละเอียดวัสดุในฉาก
+		for _, v in pairs(workspace:GetDescendants()) do
+			if v:IsA("BasePart") and not v:IsA("MeshPart") then
+				v.Material = Enum.Material.SmoothPlastic
+			elseif v:IsA("Texture") or v:IsA("Decal") then
+				v.Transparency = 0.5
+			elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
+				v.Enabled = false
+			end
+		end
+	else
+		-- คืนค่าเงาและหมอก
+		Lighting.GlobalShadows = originalGlobalShadows
+		Lighting.FogEnd = originalFogEnd
+	end
+end
+
+LowGraphicBtn.MouseButton1Click:Connect(function()
+	isLowGraphicsActive = not isLowGraphicsActive
+	
+	if isLowGraphicsActive then
+		LowGraphicBtn.Text = "⚡ ลดกราฟิก (ลื่นขึ้น): เปิด"
+		LowGraphicBtn.BackgroundColor3 = Color3.fromRGB(40, 180, 40)
+		toggleLowGraphics(true)
+	else
+		LowGraphicBtn.Text = "⚡ ลดกราฟิก (ลื่นขึ้น): ปิด"
+		LowGraphicBtn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+		toggleLowGraphics(false)
+	end
+end)
